@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:,">
+<title>nec8mon · NEC8 传感器监控</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg:        #f5f6f8;
+    --panel:     #ffffff;
+    --panel-2:   #fafbfc;
+    --border:    #e3e6ea;
+    --text:      #1c2024;
+    --muted:     #6b7280;
+    --accent:    #2f6feb;
+    --ok:        #16a34a;
+    --warn:      #d97706;
+    --hot:       #ea580c;
+    --danger:    #dc2626;
+    --grid:      #eceff3;
+    --shadow:    0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:      #0f1216;
+      --panel:   #171b21;
+      --panel-2: #1d222a;
+      --border:  #272d36;
+      --text:    #e6e9ee;
+      --muted:   #8b95a5;
+      --accent:  #5b8cff;
+      --ok:      #3ecf8e;
+      --warn:    #f5a524;
+      --hot:     #fb923c;
+      --danger:  #f87171;
+      --grid:    #222831;
+      --shadow:  0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 48px; }
+
+  /* ---------- 顶栏 ---------- */
+  header.top {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-bottom: 22px;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand h1 { font-size: 19px; margin: 0; letter-spacing: .2px; font-weight: 650; }
+  .brand .host {
+    font-size: 13px; color: var(--muted);
+    background: var(--panel); border: 1px solid var(--border);
+    padding: 2px 9px; border-radius: 999px;
+  }
+  .spacer { flex: 1 1 auto; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; padding: 4px 11px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+    white-space: nowrap;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
+  .dot.bad { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent); }
+
+  /* ---------- 主指标卡 ---------- */
+  .heroes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; box-shadow: var(--shadow); padding: 20px 22px;
+  }
+  .hero .label {
+    font-size: 13px; color: var(--muted); letter-spacing: .3px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hero .value {
+    font-size: 52px; font-weight: 620; line-height: 1.12; margin: 6px 0 2px;
+    font-variant-numeric: tabular-nums; letter-spacing: -1px;
+    transition: color .25s ease;
+  }
+  .hero .value .unit { font-size: 20px; font-weight: 500; color: var(--muted); margin-left: 5px; }
+  .hero .sub { font-size: 13px; color: var(--muted); min-height: 20px; }
+  .hero .spark { margin-top: 12px; height: 54px; }
+  .spark svg { width: 100%; height: 54px; display: block; overflow: visible; }
+  .spark .area { fill: color-mix(in srgb, currentColor 14%, transparent); stroke: none; }
+  .spark .line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .spark .base { stroke: var(--grid); stroke-width: 1; stroke-dasharray: 3 4; }
+
+  .c-ok     { color: var(--ok); }
+  .c-warn   { color: var(--warn); }
+  .c-hot    { color: var(--hot); }
+  .c-danger { color: var(--danger); }
+  .c-muted  { color: var(--muted); }
+
+  /* ---------- 数据源状态 ---------- */
+  .sources { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .src {
+    font-size: 12px; padding: 4px 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+
+  /* ---------- 明细表 ---------- */
+  section.block { margin-top: 26px; }
+  section.block > h2 {
+    font-size: 14px; font-weight: 600; margin: 0 0 10px; color: var(--muted);
+    letter-spacing: .4px;
+  }
+  .group {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 12px;
+  }
+  .group > .gname {
+    padding: 11px 18px; font-weight: 600; font-size: 14px;
+    border-bottom: 1px solid var(--border); background: var(--panel-2);
+  }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 9px 18px; font-size: 14px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.r { text-align: right; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  td.c { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .cat {
+    font-size: 11px; padding: 1px 7px; border-radius: 6px;
+    border: 1px solid var(--border); color: var(--muted); background: var(--panel-2);
+  }
+
+  /* ---------- 风扇调速 ---------- */
+  .fanctl {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; box-shadow: var(--shadow); padding: 18px 22px 20px;
+  }
+  .fc-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .fc-head h3 { margin: 0; font-size: 15px; font-weight: 640; }
+  .fc-badge {
+    font-size: 12px; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+    white-space: nowrap;
+  }
+  .fc-badge.live { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  .fc-badge.alert {
+    color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, var(--border));
+    background: color-mix(in srgb, var(--danger) 12%, var(--panel-2));
+  }
+  .fc-badge.on { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); }
+
+  .modes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mode {
+    font: inherit; font-size: 13.5px; padding: 7px 14px; border-radius: 9px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .mode:hover:not(:disabled) { border-color: var(--accent); }
+  .mode.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .mode:disabled { opacity: .42; cursor: not-allowed; }
+
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 13px; }
+  .row > label { font-size: 13px; color: var(--muted); min-width: 68px; }
+  input[type=range] { flex: 1 1 240px; min-width: 160px; accent-color: var(--accent); }
+  input[type=number], select {
+    font: inherit; font-size: 13.5px; padding: 5px 9px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  input[type=number] { width: 84px; }
+  .duty-num { font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; min-width: 54px; text-align: right; }
+  .fc-err { color: var(--danger); font-size: 12.5px; margin-top: 10px; min-height: 17px; }
+  .fc-note { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.65; }
+  .fc-note b { color: var(--text); font-weight: 600; }
+  .curve-pts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 9px; }
+  .curve-pts span {
+    font-size: 11.5px; padding: 2px 8px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    transition: all .2s ease;
+  }
+  .curve-pts span.active {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+    background: color-mix(in srgb, var(--accent) 10%, var(--panel-2));
+    color: var(--text);
+    font-weight: 500;
+  }
+  table thead td {
+    font-size: 11.5px; font-weight: 600; color: var(--muted);
+    letter-spacing: .3px; background: var(--panel-2);
+  }
+  .tag {
+    display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+    margin-right: 4px; white-space: nowrap;
+  }
+  .tag.live { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  .tag.on { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); }
+
+  footer {
+    margin-top: 26px; font-size: 12px; color: var(--muted);
+    display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+  }
+  code { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; }
+  .empty { color: var(--muted); padding: 30px 18px; text-align: center; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>nec8mon</h1>
+      <span class="host" id="host">—</span>
+    </div>
+    <div class="spacer"></div>
+    <span class="pill"><span class="dot" id="connDot"></span><span id="connText">连接中…</span></span>
+    <span class="pill" id="uptime">运行 —</span>
+  </header>
+
+  <div class="heroes">
+    <div class="card hero">
+      <div class="label">CPU 温度</div>
+      <div class="value" id="tempVal">—<span class="unit">°C</span></div>
+      <div class="sub" id="tempSub">等待数据…</div>
+      <div class="spark" id="tempSpark"></div>
+    </div>
+    <div class="card hero">
+      <div class="label">风扇转速</div>
+      <div class="value" id="fanVal">—<span class="unit">RPM</span></div>
+      <div class="sub" id="fanSub">等待数据…</div>
+      <div class="spark" id="fanSpark"></div>
+    </div>
+  </div>
+
+  <div class="sources" id="sources"></div>
+
+  <section class="block">
+    <h2>风扇调速</h2>
+    <div class="fanctl">
+      <div class="fc-head">
+        <h3>控制模式</h3>
+        <span class="fc-badge" id="fcChip">检测中…</span>
+        <span class="fc-badge" id="fcState">—</span>
+        <div class="spacer"></div>
+        <span class="fc-badge alert" id="fcEmerg" style="display:none">过温保护已触发 · 风扇已恢复满速</span>
+      </div>
+
+      <div class="modes">
+        <button class="mode" data-mode="auto" type="button">自动（交还 BIOS）</button>
+        <button class="mode" data-mode="manual" type="button">手动固定转速</button>
+        <button class="mode" data-mode="curve" type="button">按温度曲线</button>
+      </div>
+
+      <div class="row">
+        <label for="fcDuty">占空比</label>
+        <input type="range" id="fcDuty" min="20" max="100" step="1" value="30">
+        <span class="duty-num" id="fcDutyVal">30%</span>
+        <span class="fc-badge" id="fcApplied">未接管</span>
+        <span class="fc-badge" id="fcHwDuty" style="display:none">芯片读回 —</span>
+      </div>
+
+      <div class="row">
+        <label>曲线预设</label>
+        <button class="mode" data-curve="quiet" type="button">静音</button>
+        <button class="mode" data-curve="balanced" type="button">均衡</button>
+        <button class="mode" data-curve="performance" type="button">强劲</button>
+        <span class="fc-badge" id="fcPresetBadge" style="display:none"></span>
+      </div>
+      <div class="curve-pts" id="fcCurvePts"></div>
+
+      <div class="row">
+        <label for="fcSafety">过温保护</label>
+        <input type="number" id="fcSafety" min="50" max="110" step="1" value="75">
+        <span class="fc-badge">CPU 超过该温度时自动恢复满速</span>
+      </div>
+
+      <div class="row" id="fcChanRow" style="display:none">
+        <label for="fcChan">风扇通道</label>
+        <select id="fcChan"></select>
+        <button class="mode" id="btnTestChan" type="button" style="padding:4px 12px;font-size:12.5px;">测试此通道响应</button>
+        <span class="fc-badge" id="fcChanHint">选正在转的那个通道</span>
+      </div>
+
+      <div class="fc-err" id="fcErr"></div>
+      <div class="fc-note" id="fcNote">正在读取 Super I/O 芯片信息…</div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>风扇通道明细</h2>
+    <div id="fanList"></div>
+  </section>
+
+  <section class="block">
+    <h2>全部传感器</h2>
+    <div id="details"></div>
+  </section>
+
+  <footer>
+    <span>API: <code>/api/sensors</code> · <code>/api/history</code> · <code>/api/health</code> · <code>/api/fan</code></span>
+    <span id="updated">—</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var els = {
+    host: document.getElementById("host"),
+    connDot: document.getElementById("connDot"),
+    connText: document.getElementById("connText"),
+    uptime: document.getElementById("uptime"),
+    tempVal: document.getElementById("tempVal"),
+    tempSub: document.getElementById("tempSub"),
+    tempSpark: document.getElementById("tempSpark"),
+    fanVal: document.getElementById("fanVal"),
+    fanSub: document.getElementById("fanSub"),
+    fanSpark: document.getElementById("fanSpark"),
+    sources: document.getElementById("sources"),
+    details: document.getElementById("details"),
+    updated: document.getElementById("updated"),
+
+    fcChip: document.getElementById("fcChip"),
+    fcState: document.getElementById("fcState"),
+    fcEmerg: document.getElementById("fcEmerg"),
+    fcDuty: document.getElementById("fcDuty"),
+    fcDutyVal: document.getElementById("fcDutyVal"),
+    fcApplied: document.getElementById("fcApplied"),
+    fcHwDuty: document.getElementById("fcHwDuty"),
+    fcPresetBadge: document.getElementById("fcPresetBadge"),
+    fcCurvePts: document.getElementById("fcCurvePts"),
+    fcSafety: document.getElementById("fcSafety"),
+    fcChanRow: document.getElementById("fcChanRow"),
+    fcChan: document.getElementById("fcChan"),
+    btnTestChan: document.getElementById("btnTestChan"),
+    fcChanHint: document.getElementById("fcChanHint"),
+    fcErr: document.getElementById("fcErr"),
+    fcNote: document.getElementById("fcNote"),
+    fanList: document.getElementById("fanList")
+  };
+
+  var CURVES = {
+    quiet: {
+      points: [
+        { temp: 30, duty: 20 }, { temp: 45, duty: 22 }, { temp: 60, duty: 35 },
+        { temp: 70, duty: 55 }, { temp: 80, duty: 85 }, { temp: 88, duty: 100 }
+      ],
+      hysteresis: 3
+    },
+    balanced: {
+      points: [
+        { temp: 35, duty: 30 }, { temp: 55, duty: 42 }, { temp: 70, duty: 62 },
+        { temp: 80, duty: 85 }, { temp: 90, duty: 100 }
+      ],
+      hysteresis: 3
+    },
+    performance: {
+      points: [
+        { temp: 30, duty: 50 }, { temp: 60, duty: 72 }, { temp: 75, duty: 90 },
+        { temp: 85, duty: 100 }
+      ],
+      hysteresis: 2
+    }
+  };
+
+  var CURVE_NAMES = {
+    quiet: "静音",
+    balanced: "均衡",
+    performance: "强劲"
+  };
+
+  // 根据当前 points 比对命中的曲线预设
+  function matchCurvePreset(curve) {
+    if (!curve || !curve.points || !curve.points.length) return null;
+    var pts = curve.points;
+    for (var k in CURVES) {
+      var ref = CURVES[k].points;
+      if (ref.length !== pts.length) continue;
+      var match = true;
+      for (var i = 0; i < ref.length; i++) {
+        if (Math.round(ref[i].temp) !== Math.round(pts[i].temp) ||
+            Math.round(ref[i].duty) !== Math.round(pts[i].duty)) {
+          match = false;
+          break;
+        }
+      }
+      if (match) return k;
+    }
+    return null;
+  }
+
+  function fmt(n, digits) {
+    if (n === null || n === undefined || isNaN(n)) return "—";
+    return Number(n).toFixed(digits === undefined ? 1 : digits);
+  }
+
+  function dur(sec) {
+    if (!sec && sec !== 0) return "—";
+    var d = Math.floor(sec / 86400);
+    var h = Math.floor((sec % 86400) / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    if (d > 0) return d + " 天 " + h + " 小时";
+    if (h > 0) return h + " 小时 " + m + " 分";
+    return m + " 分";
+  }
+
+  function tempClass(v) {
+    if (v === null) return "c-muted";
+    if (v >= 85) return "c-danger";
+    if (v >= 70) return "c-hot";
+    if (v >= 55) return "c-warn";
+    return "c-ok";
+  }
+
+  function fanClass(v) {
+    if (v === null) return "c-muted";
+    if (v <= 0) return "c-danger";
+    if (v < 400) return "c-warn";
+    if (v > 2600) return "c-hot";
+    return "c-ok";
+  }
+
+  // 通道明细表里用：没接风扇的通道是 0，不该显示成红色警告。
+  function fanRowClass(v) {
+    if (v === null || v === undefined) return "c-muted";
+    if (v <= 0) return "c-muted";
+    return fanClass(v);
+  }
+
+  function tempHint(v) {
+    if (v === null) return "无数据";
+    if (v >= 85) return "过热，请检查散热";
+    if (v >= 70) return "温度偏高";
+    if (v >= 55) return "略热";
+    return "温度正常";
+  }
+
+  function fanHint(v, pct) {
+    if (v === null) return "无数据";
+    var s = v <= 0 ? "风扇未转动" : (v < 400 ? "转速偏低" : (v > 2600 ? "转速较高" : "转速正常"));
+    if (pct !== null && pct !== undefined) s += " · 调速 " + fmt(pct, 0) + "%";
+    return s;
+  }
+
+  function escapeHTML(s) {
+    return String(s === null || s === undefined ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function sparkline(el, values, colorClass) {
+    var pts = values.filter(function (v) { return v !== null && v !== undefined && !isNaN(v); });
+    if (pts.length < 2) { el.innerHTML = ""; return; }
+    var W = 300, H = 54, pad = 4;
+    var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
+    if (max - min < 1e-6) { max = min + 1; min = min - 1; }
+    var step = (W - pad * 2) / (values.length - 1);
+    var d = "", area = "", started = false;
+    for (var i = 0; i < values.length; i++) {
+      var v = values[i];
+      if (v === null || v === undefined || isNaN(v)) continue;
+      var x = pad + i * step;
+      var y = H - pad - ((v - min) / (max - min)) * (H - pad * 2);
+      d += (started ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1) + " ";
+      area += (started ? "L" : "M") + x.toFixed(1) + " " + (H - pad) + " ";
+      started = true;
+    }
+    if (!started) { el.innerHTML = ""; return; }
+    area += "L" + (pad + (values.length - 1) * step).toFixed(1) + " " + (H - pad) + " Z";
+    el.innerHTML =
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" class="' + colorClass + '">' +
+      '<path class="area" d="' + area + '"></path>' +
+      '<path class="line" d="' + d + '"></path>' +
+      '</svg>';
+  }
+
+  var lastSnapshot = null;
+  var lastFan = null;
+  var dutyTimer = null;
+
+  // 从读数 ID 里解析通道号：superio/fan/1、superio/control/1、superio/tach/8。
+  function parseChannel(id) {
+    var m = String(id || "").match(/\/(fan|control|tach)\/(\d+)$/);
+    if (!m) return null;
+    return { kind: m[1], idx: parseInt(m[2], 10) };
+  }
+
+  // 汇总所有风扇通道：可调速通道 + 只读测速口。
+  function fanChannelList() {
+    var map = {};
+    var readings = (lastSnapshot && lastSnapshot.readings) || [];
+    readings.forEach(function (r) {
+      var p = parseChannel(r.id);
+      if (!p) return;
+      var ro = p.kind === "tach";
+      var key = ro ? "ro:" + p.idx : String(p.idx);
+      var e = map[key];
+      if (!e) {
+        e = map[key] = { ch: p.idx, ro: ro, name: "", rpm: null, duty: null };
+      }
+      if (p.kind === "control") {
+        e.duty = r.value;
+      } else {
+        e.rpm = r.value;
+        e.name = r.name || e.name;
+      }
+    });
+    var out = [];
+    Object.keys(map).forEach(function (k) { out.push(map[k]); });
+    out.sort(function (a, b) {
+      if (a.ro !== b.ro) return a.ro ? 1 : -1;
+      return a.ch - b.ch;
+    });
+    return out;
+  }
+
+  // 去掉名字里的"通道 N · "前缀，只留描述部分。
+  function baseName(name) {
+    return String(name || "").replace(/^通道\s*\d+\s*[·|]\s*/, "");
+  }
+
+  // 当前正在转（转速最高）的通道。
+  function fastestChannel(list) {
+    var best = null;
+    list.forEach(function (e) {
+      if (e.rpm !== null && (!best || e.rpm > best.rpm)) best = e;
+    });
+    return best;
+  }
+
+  function renderFanChannels(st) {
+    var list = fanChannelList();
+    if (!list.length) {
+      els.fanList.innerHTML = '<div class="card empty">没有读到风扇通道（Super I/O 读取失败，请看上方数据源状态）</div>';
+      return;
+    }
+    var fast = fastestChannel(list);
+    var html = '<div class="group"><table><thead><tr>' +
+      '<td class="c">通道</td><td class="c">名称</td>' +
+      '<td class="n">转速</td><td class="n">占空比</td><td class="c">状态</td>' +
+      '</tr></thead><tbody>';
+
+    list.forEach(function (e) {
+      var tags = "";
+      if (e.ro) {
+        tags += '<span class="tag">只读测速口</span>';
+      } else {
+        if (st && e.ch === st.channel) {
+          tags += '<span class="tag ' + (st.mode !== "auto" ? "on" : "live") + '">' +
+                  (st.mode !== "auto" ? "正在控制" : "已选中") + '</span>';
+        }
+        if (fast && e === fast && e.rpm > 0) {
+          tags += '<span class="tag live">当前在转</span>';
+        }
+        if (!e.rpm) {
+          tags += '<span class="tag">未转动 / 未接风扇</span>';
+        }
+      }
+      html += '<tr>' +
+        '<td class="c">' + (e.ro ? "—" : e.ch) + '</td>' +
+        '<td>' + escapeHTML(e.name || "—") + '</td>' +
+        '<td class="n ' + fanRowClass(e.rpm) + '">' +
+          (e.rpm === null ? "—" : fmt(e.rpm, 0) + " RPM") + '</td>' +
+        '<td class="n">' + (e.duty === null ? "—" : fmt(e.duty, 0) + "%") + '</td>' +
+        '<td class="c">' + tags + '</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table></div>';
+    els.fanList.innerHTML = html;
+  }
+
+  function renderSources(sources) {
+    var html = "";
+    (sources || []).forEach(function (s) {
+      var cls = s.ok && s.count > 0 ? "ok" : "bad";
+      var detail = s.ok ? (s.count + " 项") : (s.detail || "不可用");
+      html += '<span class="src" title="' + escapeHTML(s.detail || "") + '">' +
+              '<span class="dot ' + cls + '"></span>' +
+              escapeHTML(s.name) + ' · ' + escapeHTML(detail) + '</span>';
+    });
+    els.sources.innerHTML = html;
+  }
+
+  function renderDetails(readings) {
+    if (!readings || !readings.length) {
+      els.details.innerHTML = '<div class="card empty">暂无传感器读数</div>';
+      return;
+    }
+    var groups = {};
+    readings.forEach(function (r) {
+      var hw = r.hardware || "未分类";
+      (groups[hw] = groups[hw] || []).push(r);
+    });
+    var html = "";
+    Object.keys(groups).sort().forEach(function (hw) {
+      html += '<div class="group"><div class="gname">' + escapeHTML(hw) + '</div><table>';
+      groups[hw].forEach(function (r) {
+        var digits = 1;
+        if (r.unit === "RPM" || r.unit === "MHz") digits = 0;
+        else if (r.unit === "V") digits = 3;
+        else if (r.unit === "A") digits = 2;
+        var cls = r.category === "Temperature" ? tempClass(r.value)
+                 : (r.category === "Fan" && r.unit === "RPM" ? fanClass(r.value) : "");
+        html += '<tr>' +
+          '<td>' + escapeHTML(r.name) + '</td>' +
+          '<td class="c"><span class="cat">' + escapeHTML(r.category) + '</span></td>' +
+          '<td class="n ' + cls + '">' + fmt(r.value, digits) + ' ' + escapeHTML(r.unit) + '</td>' +
+          '<td class="r">' + (r.min || r.max ? fmt(r.min, digits) + ' ~ ' + fmt(r.max, digits) : "") + '</td>' +
+          '<td class="c">' + escapeHTML(r.source) + '</td>' +
+          '</tr>';
+      });
+      html += '</table></div>';
+    });
+    els.details.innerHTML = html;
+  }
+
+  function apply(snap) {
+    lastSnapshot = snap;
+    els.host.textContent = snap.hostname || "—";
+    els.uptime.textContent = "运行 " + dur(snap.uptimeSeconds);
+    els.updated.textContent = "更新于 " + new Date(snap.updatedAt).toLocaleTimeString();
+
+    var t = snap.cpuTemperature;
+    if (t) {
+      els.tempVal.className = "value " + tempClass(t.value);
+      els.tempVal.innerHTML = fmt(t.value, 1) + '<span class="unit">°C</span>';
+      els.tempSub.textContent = tempHint(t.value) + " · " + (t.hardware || "") + " · " + (t.name || "");
+    } else {
+      els.tempVal.className = "value c-muted";
+      els.tempVal.innerHTML = '—<span class="unit">°C</span>';
+      els.tempSub.textContent = "未获取到 CPU 温度（Super I/O 读取失败，请看上方数据源状态）";
+    }
+
+    var f = snap.fan;
+    var pct = (snap.fanPercent && typeof snap.fanPercent.value === "number") ? snap.fanPercent.value : null;
+    if (f) {
+      els.fanVal.className = "value " + fanClass(f.value);
+      els.fanVal.innerHTML = fmt(f.value, 0) + '<span class="unit">RPM</span>';
+      var ctrlInfo = (lastFan && lastFan.channel >= 0) ? (" [当前控制: 通道 " + lastFan.channel + "]") : "";
+      els.fanSub.textContent = fanHint(f.value, pct) + " · " + (f.hardware || "") + " · " + (f.name || "") + ctrlInfo;
+    } else {
+      els.fanVal.className = "value c-muted";
+      els.fanVal.innerHTML = '—<span class="unit">RPM</span>';
+      els.fanSub.textContent = "未获取到风扇转速（Super I/O 读取失败，请看下方风扇通道明细）";
+    }
+
+    renderSources(snap.sources);
+    renderDetails(snap.readings);
+  }
+
+  /* ---------------- 风扇调速 ---------------- */
+
+  function postControl(payload) {
+    els.fcErr.textContent = "";
+    payload = payload || {};
+    // 关键修正：确保所有调速请求（滑块、模式、预设）都严格携带当前选中的 channel，绝不漏选通道 0
+    if (payload.channel === undefined && els.fcChan && els.fcChan.value !== "") {
+      payload.channel = Number(els.fcChan.value);
+    }
+    return fetch("api/fan/control", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function (r) {
+      return r.json().then(function (data) {
+        if (!r.ok) throw new Error(data.error || ("HTTP " + r.status));
+        return data;
+      });
+    }).then(function (st) {
+      renderFan(st);
+      return st;
+    }).catch(function (e) {
+      els.fcErr.textContent = e.message || String(e);
+      throw e;
+    });
+  }
+
+  function renderFan(st) {
+    if (!st) return;
+    lastFan = st;
+    var b = st.backend || {};
+    var available = !!st.available;
+
+    els.fcChip.textContent = available ? (b.chip || "Super I/O") : "调速不可用";
+    els.fcChip.className = "fc-badge " + (available ? "live" : "");
+
+    var modeText = { auto: "自动", manual: "手动固定", curve: "温度曲线" }[st.mode] || st.mode;
+    var managed = st.mode !== "auto";
+    els.fcState.textContent = "当前 " + modeText + " · 通道 " + st.channel +
+      (available ? "" : " · 仅监控");
+    els.fcState.className = "fc-badge " + (managed ? "on" : "");
+
+    els.fcEmerg.style.display = st.emergency ? "" : "none";
+
+    // 模式按钮
+    var modeBtns = document.querySelectorAll(".mode[data-mode]");
+    Array.prototype.forEach.call(modeBtns, function (btn) {
+      var on = btn.getAttribute("data-mode") === st.mode;
+      btn.className = "mode" + (on ? " on" : "");
+      btn.disabled = !available;
+    });
+
+    // 占空比
+    if (document.activeElement !== els.fcDuty) {
+      els.fcDuty.value = st.duty;
+    }
+    els.fcDutyVal.textContent = Math.round(st.duty) + "%";
+    els.fcDuty.disabled = !available;
+
+    els.fcApplied.textContent = st.appliedDuty > 0
+      ? ("已写入 " + Math.round(st.appliedDuty) + "%")
+      : (managed ? "等待写入" : "未接管");
+    els.fcApplied.className = "fc-badge " + (st.appliedDuty > 0 ? "on" : "");
+
+    if (st.hasDuty) {
+      els.fcHwDuty.style.display = "";
+      els.fcHwDuty.textContent = "芯片读回 " + fmt(st.hardwareDuty, 0) + "%";
+    } else {
+      els.fcHwDuty.style.display = "none";
+    }
+
+    // 曲线与预设按钮高亮
+    var isCurveMode = st.mode === "curve";
+    var matchedPreset = isCurveMode ? matchCurvePreset(st.curve) : null;
+    var curveBtns = document.querySelectorAll(".mode[data-curve]");
+    Array.prototype.forEach.call(curveBtns, function (btn) {
+      var on = isCurveMode && (btn.getAttribute("data-curve") === matchedPreset);
+      btn.className = "mode" + (on ? " on" : "");
+      btn.disabled = !available;
+    });
+
+    if (els.fcPresetBadge) {
+      if (isCurveMode) {
+        els.fcPresetBadge.style.display = "";
+        if (matchedPreset && CURVE_NAMES[matchedPreset]) {
+          els.fcPresetBadge.textContent = "当前生效: " + CURVE_NAMES[matchedPreset];
+          els.fcPresetBadge.className = "fc-badge live";
+        } else {
+          els.fcPresetBadge.textContent = "当前生效: 自定义曲线";
+          els.fcPresetBadge.className = "fc-badge";
+        }
+      } else {
+        els.fcPresetBadge.style.display = "none";
+      }
+    }
+
+    var pts = (st.curve && st.curve.points) || [];
+    els.fcCurvePts.innerHTML = pts.map(function (p) {
+      return '<span class="' + (isCurveMode ? "active" : "") + '">' +
+        fmt(p.temp, 0) + '°C → ' + fmt(p.duty, 0) + '%</span>';
+    }).join("");
+
+    if (document.activeElement !== els.fcSafety) {
+      els.fcSafety.value = st.safetyTemp;
+    }
+    els.fcSafety.disabled = !available;
+
+    // 通道选择：下拉里直接带上名称与实时转速，
+    // 这样一眼就能看出哪个通道是真的在转、哪个位置压根没接风扇。
+    if (available && b.channels > 1) {
+      var list = fanChannelList().filter(function (e) { return !e.ro; });
+      var fast = fastestChannel(fanChannelList());
+
+      if (els.fcChan.options.length !== b.channels) {
+        els.fcChan.innerHTML = "";
+        for (var i = 0; i < b.channels; i++) {
+          var o = document.createElement("option");
+          o.value = String(i);
+          o.textContent = "通道 " + i;
+          els.fcChan.appendChild(o);
+        }
+      }
+      list.forEach(function (e) {
+        var opt = els.fcChan.options[e.ch];
+        if (!opt) return;
+        var rpm = e.rpm === null ? "" : (e.rpm > 0 ? fmt(e.rpm, 0) + " RPM" : "未转动");
+        var isFast = fast && fast.ch === e.ch && e.rpm > 0;
+        opt.textContent = "通道 " + e.ch + " · " + baseName(e.name) + (rpm ? " · " + rpm : "") + (isFast ? " (在转推荐)" : "");
+        opt.title = e.name || "";
+      });
+
+      // 仅在未聚焦时同步选中值，避免打断用户正在选择的交互
+      if (document.activeElement !== els.fcChan) {
+        els.fcChan.value = String(st.channel);
+      }
+      els.fcChanRow.style.display = "";
+
+      if (els.btnTestChan) {
+        els.btnTestChan.disabled = !available || !!st.testing;
+        els.btnTestChan.textContent = st.testing ? "正在测试响应中…" : "测试此通道响应";
+      }
+
+      els.fcChanHint.textContent = fast && fast.rpm > 0
+        ? ("当前在转的是通道 " + fast.ch + "（" + fmt(fast.rpm, 0) + " RPM），调速请选它")
+        : "没有检测到在转的风扇";
+    } else {
+      els.fcChanRow.style.display = "none";
+    }
+
+    if (st.lastError) {
+      els.fcErr.textContent = "上次写入失败：" + st.lastError;
+    }
+
+    if (!available) {
+      els.fcNote.innerHTML = "当前无法调速：" + escapeHTML(b.detail || "未检测到受支持的 Super I/O 芯片") +
+        "<br>可以先用 BIOS 里的风扇设置降速（本机为联想 ThinkCentre M720q，Super I/O 是 Nuvoton NCT6686D-L）。";
+    } else {
+      els.fcNote.innerHTML = "调速通过写入 <b>" + escapeHTML(b.chip || "Super I/O") + "</b> 的 PWM 占空比寄存器实现；" +
+        "「自动」模式会把风扇完全交还给 BIOS。<b>过温保护</b>始终生效：CPU 温度超过设定值会立刻恢复满速。" +
+        "<br><b>拖动占空比滑块会自动切换到手动模式</b>并立刻写入；「芯片读回」是直接从寄存器读到的实际占空比，" +
+        "两者不一致说明该通道没有接风扇或被 BIOS 接管。" +
+        "<br><b>设置会自动保存</b>：关掉网页、重启服务、重启电脑都不会丢，下次启动自动恢复。";
+    }
+    renderFanChannels(st);
+  }
+
+  function setMode(mode) {
+    if (!lastFan || !lastFan.available) {
+      els.fcErr.textContent = "调速后端不可用";
+      return;
+    }
+    postControl({ mode: mode }).catch(function () {});
+  }
+
+  // 拖动滑块时防抖后写入
+  function onDutyInput() {
+    els.fcDutyVal.textContent = Math.round(Number(els.fcDuty.value)) + "%";
+    if (dutyTimer) clearTimeout(dutyTimer);
+    dutyTimer = setTimeout(function () {
+      var payload = { duty: Number(els.fcDuty.value) };
+      // 自动模式下 BIOS 仍然控制着风扇，拖滑块不会有任何效果。
+      // 所以顺手把模式切成手动，让用户的操作立刻生效。
+      if (lastFan && lastFan.mode === "auto") payload.mode = "manual";
+      postControl(payload).catch(function () {});
+    }, 350);
+  }
+
+  function onSafetyChange() {
+    var v = Number(els.fcSafety.value);
+    if (isNaN(v)) return;
+    postControl({ safetyTemp: v }).catch(function () {});
+  }
+
+  function onChannelChange() {
+    postControl({ channel: Number(els.fcChan.value) }).catch(function () {});
+  }
+
+  function setCurve(preset) {
+    var c = CURVES[preset];
+    if (!c) return;
+    postControl({ curve: c, mode: "curve" }).catch(function () {});
+  }
+
+  function bindFan() {
+    Array.prototype.forEach.call(document.querySelectorAll(".mode[data-mode]"), function (btn) {
+      btn.addEventListener("click", function () { setMode(btn.getAttribute("data-mode")); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".mode[data-curve]"), function (btn) {
+      btn.addEventListener("click", function () { setCurve(btn.getAttribute("data-curve")); });
+    });
+    els.fcDuty.addEventListener("input", onDutyInput);
+    els.fcSafety.addEventListener("change", onSafetyChange);
+    els.fcChan.addEventListener("change", onChannelChange);
+
+    if (els.btnTestChan) {
+      els.btnTestChan.addEventListener("click", function () {
+        var ch = Number(els.fcChan.value);
+        if (isNaN(ch)) return;
+        els.btnTestChan.disabled = true;
+        els.btnTestChan.textContent = "正在测试…";
+        els.fcErr.textContent = "正在向通道 " + ch + " 注入 75% 占空比进行 6 秒响应测试，请观察转速变化与风扇声音…";
+        fetch("api/fan/test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ channel: ch, duty: 75, duration: 6 })
+        }).then(function (r) {
+          return r.json();
+        }).then(function (data) {
+          if (!data.ok) throw new Error(data.error || "测试失败");
+          setTimeout(function () {
+            els.fcErr.textContent = "测试完成，已自动恢复原模式。若转速未变化请尝试测试其他通道。";
+            if (els.btnTestChan) {
+              els.btnTestChan.disabled = false;
+              els.btnTestChan.textContent = "测试此通道响应";
+            }
+          }, 6500);
+        }).catch(function (e) {
+          els.fcErr.textContent = "测试失败: " + (e.message || String(e));
+          if (els.btnTestChan) {
+            els.btnTestChan.disabled = false;
+            els.btnTestChan.textContent = "测试此通道响应";
+          }
+        });
+      });
+    }
+  }
+
+  /* ---------------- 主循环 ---------------- */
+
+  function setConn(ok, text) {
+    els.connDot.className = "dot " + (ok ? "ok" : "bad");
+    els.connText.textContent = text;
+  }
+
+  function tick() {
+    fetch("api/sensors", { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (snap) {
+        apply(snap);
+        setConn(true, "已连接");
+        return Promise.all([
+          fetch("api/history", { cache: "no-store" }).then(function (r) { return r.json(); }),
+          fetch("api/fan", { cache: "no-store" }).then(function (r) { return r.json(); })
+        ]);
+      })
+      .then(function (res) {
+        var hist = res[0];
+        if (hist && hist.length) {
+          sparkline(els.tempSpark, hist.map(function (h) { return h.temp; }), tempClass(
+            lastSnapshot && lastSnapshot.cpuTemperature ? lastSnapshot.cpuTemperature.value : null));
+          sparkline(els.fanSpark, hist.map(function (h) { return h.fan; }), fanClass(
+            lastSnapshot && lastSnapshot.fan ? lastSnapshot.fan.value : null));
+        }
+        renderFan(res[1]);
+      })
+      .catch(function (e) { setConn(false, "连接失败"); });
+  }
+
+  bindFan();
+  tick();
+  setInterval(tick, 2000);
+})();
+</script>
+</body>
+</html>

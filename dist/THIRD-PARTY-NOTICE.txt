@@ -1,0 +1,38 @@
+nec8mon 包含以下第三方资源
+================================
+
+assets/LpcIO.bin
+---------------
+PawnIO 模块（LPC / Super I/O 端口访问原语），来自：
+
+    LibreHardwareMonitor v0.9.6
+    https://github.com/LibreHardwareMonitor/LibreHardwareMonitor
+    文件路径：LibreHardwareMonitorLib/Resources/PawnIo/LpcIO.bin
+
+    许可证：Mozilla Public License, v. 2.0
+    许可证全文：https://mozilla.org/MPL/2.0/
+
+该文件在此仅以二进制形式原样分发，未作修改。
+按 MPL-2.0 的要求，其源代码可从上述上游仓库获取。
+
+本文件被内嵌进 nec8mon.exe，运行时由程序加载进 PawnIO 内核驱动，
+用于读取 Super I/O 芯片（主板的硬件监控控制器）的温度传感器、
+风扇转速计数器，并写入风扇 PWM 占空比。
+
+
+assets/IntelMSR.bin
+-------------------
+PawnIO 模块（Intel 模型专用寄存器读取原语），来自：
+
+    LibreHardwareMonitor v0.9.6
+    https://github.com/LibreHardwareMonitor/LibreHardwareMonitor
+    文件路径：LibreHardwareMonitorLib/Resources/PawnIo/IntelMSR.bin
+
+    许可证：Mozilla Public License, v. 2.0
+    许可证全文：https://mozilla.org/MPL/2.0/
+
+该文件在此仅以二进制形式原样分发，未作修改。
+按 MPL-2.0 的要求，其源代码可从上述上游仓库获取。
+
+本文件被内嵌进 nec8mon.exe，运行时由程序加载进 PawnIO 内核驱动，
+用于读取 Intel CPU 的封装温度（IA32_PACKAGE_THERM_STATUS / IA32_THERM_STATUS）。

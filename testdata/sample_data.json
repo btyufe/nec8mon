@@ -1,0 +1,263 @@
+{
+  "id": 0,
+  "Text": "Sensor",
+  "Min": "",
+  "Value": "",
+  "Max": "",
+  "Children": [
+    {
+      "id": 1,
+      "Text": "Intel Core i5-8500T",
+      "Min": "",
+      "Value": "",
+      "Max": "",
+      "HardwareId": "/intelcpu/0",
+      "ImageURL": "images_icon/cpu.png",
+      "Children": [
+        {
+          "id": 2,
+          "Text": "CPU Package",
+          "Min": "33.0 °C",
+          "Value": "45.6 °C",
+          "Max": "78.0 °C",
+          "SensorId": "/intelcpu/0/temperature/0",
+          "Type": "Temperature",
+          "RawMin": "33.0 °C",
+          "RawValue": "45.6 °C",
+          "RawMax": "78.0 °C",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        },
+        {
+          "id": 3,
+          "Text": "Core Max",
+          "Min": "35.0 °C",
+          "Value": "46.2 °C",
+          "Max": "80.0 °C",
+          "SensorId": "/intelcpu/0/temperature/1",
+          "Type": "Temperature",
+          "RawMin": "35.0 °C",
+          "RawValue": "46.2 °C",
+          "RawMax": "80.0 °C",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        },
+        {
+          "id": 4,
+          "Text": "Core Average",
+          "Min": "34.0 °C",
+          "Value": "41.8 °C",
+          "Max": "76.0 °C",
+          "SensorId": "/intelcpu/0/temperature/2",
+          "Type": "Temperature",
+          "RawMin": "34.0 °C",
+          "RawValue": "41.8 °C",
+          "RawMax": "76.0 °C",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        },
+        {
+          "id": 5,
+          "Text": "Core #1",
+          "Min": "33.0 °C",
+          "Value": "42.1 °C",
+          "Max": "78.0 °C",
+          "SensorId": "/intelcpu/0/temperature/3",
+          "Type": "Temperature",
+          "RawMin": "33.0 °C",
+          "RawValue": "42.1 °C",
+          "RawMax": "78.0 °C",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        },
+        {
+          "id": 6,
+          "Text": "Core #2",
+          "Min": "33.0 °C",
+          "Value": "40.5 °C",
+          "Max": "78.0 °C",
+          "SensorId": "/intelcpu/0/temperature/4",
+          "Type": "Temperature",
+          "RawMin": "33.0 °C",
+          "RawValue": "40.5 °C",
+          "RawMax": "78.0 °C",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        },
+        {
+          "id": 7,
+          "Text": "CPU Total",
+          "Min": "0.0 %",
+          "Value": "18.3 %",
+          "Max": "100.0 %",
+          "SensorId": "/intelcpu/0/load/0",
+          "Type": "Load",
+          "RawMin": "0.0 %",
+          "RawValue": "18.3 %",
+          "RawMax": "100.0 %",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        },
+        {
+          "id": 8,
+          "Text": "Bus Speed",
+          "Min": "800.0 MHz",
+          "Value": "2600.0 MHz",
+          "Max": "3900.0 MHz",
+          "SensorId": "/intelcpu/0/clock/0",
+          "Type": "Clock",
+          "RawMin": "800.0 MHz",
+          "RawValue": "2600.0 MHz",
+          "RawMax": "3900.0 MHz",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "Text": "Nuvoton NCT6798",
+      "Min": "",
+      "Value": "",
+      "Max": "",
+      "HardwareId": "/lpc/nct6798",
+      "ImageURL": "images_icon/mainboard.png",
+      "Children": [
+        {
+          "id": 10,
+          "Text": "CPU Fan",
+          "Min": "0 RPM",
+          "Value": "1180 RPM",
+          "Max": "3210 RPM",
+          "SensorId": "/lpc/nct6798/fan/0",
+          "Type": "Fan",
+          "RawMin": "0 RPM",
+          "RawValue": "1180 RPM",
+          "RawMax": "3210 RPM",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        },
+        {
+          "id": 11,
+          "Text": "SYS Fan",
+          "Min": "0 RPM",
+          "Value": "0 RPM",
+          "Max": "2400 RPM",
+          "SensorId": "/lpc/nct6798/fan/1",
+          "Type": "Fan",
+          "RawMin": "0 RPM",
+          "RawValue": "0 RPM",
+          "RawMax": "2400 RPM",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        },
+        {
+          "id": 12,
+          "Text": "Smart Fan",
+          "Min": "0.0 %",
+          "Value": "38.0 %",
+          "Max": "100.0 %",
+          "SensorId": "/lpc/nct6798/control/0",
+          "Type": "Control",
+          "RawMin": "0.0 %",
+          "RawValue": "38.0 %",
+          "RawMax": "100.0 %",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        },
+        {
+          "id": 13,
+          "Text": "System",
+          "Min": "28.0 °C",
+          "Value": "33.0 °C",
+          "Max": "60.0 °C",
+          "SensorId": "/lpc/nct6798/temperature/0",
+          "Type": "Temperature",
+          "RawMin": "28.0 °C",
+          "RawValue": "33.0 °C",
+          "RawMax": "60.0 °C",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        },
+        {
+          "id": 14,
+          "Text": "Vcore",
+          "Min": "0.800 V",
+          "Value": "1.176 V",
+          "Max": "1.440 V",
+          "SensorId": "/lpc/nct6798/voltage/0",
+          "Type": "Voltage",
+          "RawMin": "0.800 V",
+          "RawValue": "1.176 V",
+          "RawMax": "1.440 V",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "Text": "GeForce GTX 1650",
+      "Min": "",
+      "Value": "",
+      "Max": "",
+      "HardwareId": "/gpu-nvidia/0",
+      "ImageURL": "images_icon/nvidia.png",
+      "Children": [
+        {
+          "id": 16,
+          "Text": "GPU Core",
+          "Min": "26.0 °C",
+          "Value": "39.0 °C",
+          "Max": "83.0 °C",
+          "SensorId": "/gpu-nvidia/0/temperature/0",
+          "Type": "Temperature",
+          "RawMin": "26.0 °C",
+          "RawValue": "39.0 °C",
+          "RawMax": "83.0 °C",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        },
+        {
+          "id": 17,
+          "Text": "GPU Fan",
+          "Min": "0.0 %",
+          "Value": "25.0 %",
+          "Max": "100.0 %",
+          "SensorId": "/gpu-nvidia/0/control/0",
+          "Type": "Control",
+          "RawMin": "0.0 %",
+          "RawValue": "25.0 %",
+          "RawMax": "100.0 %",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "Text": "Samsung SSD 970 EVO Plus 500GB",
+      "Min": "",
+      "Value": "",
+      "Max": "",
+      "HardwareId": "/hdd/0",
+      "ImageURL": "images_icon/hdd.png",
+      "Children": [
+        {
+          "id": 19,
+          "Text": "Temperature",
+          "Min": "0.0 °C",
+          "Value": "36.0 °C",
+          "Max": "70.0 °C",
+          "SensorId": "/hdd/0/temperature/0",
+          "Type": "Temperature",
+          "RawMin": "0.0 °C",
+          "RawValue": "36.0 °C",
+          "RawMax": "70.0 °C",
+          "ImageURL": "images/transparent.png",
+          "Children": []
+        }
+      ]
+    }
+  ]
+}
