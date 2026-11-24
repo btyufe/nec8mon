@@ -140,10 +140,10 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -RemovePawnIO
 
 在联想 ThinkCentre M720q（小主机）实机适配过程中，本项目彻底攻克了多个硬件底层的工程难题：
 
-### 1. ISA 总线锁与 Win32 Mutex 跨线程死锁修复 (v2.4.2)
-- **现象**：调速操作偶尔报错 `获取 ISA 总线锁超时`。
-- **根因**：Go 语言 Goroutine 的 M:N 调度机制使得同一个 Goroutine 在执行过程中可能切换底层的 OS 线程。当使用 `windows.ReleaseMutex` 释放全局互斥量 `Global\Access_ISABUS.HTP.Method` 时，由于释放锁的线程不是持有锁的线程，Win32 报错 `ERROR_NOT_OWNER (288)` 导致释放失败，互斥量发生永久死锁。
-- **解法**：在获取互斥量后立刻通过 `runtime.LockOSThread()` 将当前协程锁定在专用系统线程上，在释放锁完毕后再执行 `runtime.UnlockOSThread()`。
+### 1. ISA 总线锁与 Win32 Mutex 跨物理线程死锁彻底根治 (v2.4.7)
+- **现象**：程序长期运行后（如第二天），温度显示正常，但风扇转速无法显示，调速失效，控制模式按钮卡顿 2 秒并报错 `获取 ISA 总线锁超时`。
+- **根因**：Windows 的 `Named Mutex` 严格归属于 OS 物理线程。旧版本在 `WaitForSingleObject` 返回后才调用 `LockOSThread()`；但在高频长时轮询下，若 `WaitForSingleObject` 发生微秒级阻塞，Go 的 `exitsyscall` 可能会将协程调度至另一个物理线程。随后的 `ReleaseMutex` 在非持有者线程上执行，触发 `ERROR_NOT_OWNER (288)` 静默失败，导致全局互斥量在原物理线程上发生永久死锁。
+- **解法**：将 `runtime.LockOSThread()` 严格**前置**到调用 `WaitForSingleObject` 之前，确保整个等待、获取、硬件读写与释放过程 100% 绑定在同一操作系统物理线程上；并在 `Unlock()` 中校验释放结果与增加连续超时告警。
 
 ### 2. EC 总线未释放导致传感器冻结残留值 (v2.4.3)
 - **现象**：传感器读数偶发全通道显示为恒定的 `8994 RPM` 与 `35.0°C`。

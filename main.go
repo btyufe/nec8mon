@@ -12,7 +12,7 @@ import (
 )
 
 // version 是程序版本号。
-const version = "2.4.6"
+const version = "2.4.7"
 
 func main() {
 	var (

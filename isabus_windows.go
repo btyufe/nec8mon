@@ -3,7 +3,9 @@
 package main
 
 import (
+	"log"
 	"runtime"
+	"sync/atomic"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -18,7 +20,8 @@ const isaBusMutexName = `Global\Access_ISABUS.HTP.Method`
 
 // isaBusMutex 包装 Windows 互斥量，用于串行化对 ISA 总线的访问。
 type isaBusMutex struct {
-	handle windows.Handle
+	handle   windows.Handle
+	timeouts atomic.Int32
 }
 
 // newISABusMutex 打开或创建 ISA 总线互斥量。
@@ -56,13 +59,15 @@ func newISABusMutex() *isaBusMutex {
 // Lock 获取互斥量。返回是否成功。
 //
 // 【非常关键】：
-// Windows Mutex 的所有权归属于 OS 物理线程（Thread）。
-// Go 的 Goroutine 会在多个 OS 物理线程间被调度切换。如果在一个线程上获取了 Mutex，
-// 中间发生调度换到了另一个线程，后续调 ReleaseMutex 就会报 ERROR_NOT_OWNER 失败，
+// Windows Mutex 的所有权严格归属于 OS 物理线程（Thread）。
+// Go 的 Goroutine 会在多个 OS 物理线程间被调度切换。如果在调用 WaitForSingleObject 时
+// 发生阻塞，且当前 Goroutine 未与物理线程强绑定，Go 的 exitsyscall 可能会将该 Goroutine
+// 调度到另一个 OS 物理线程继续运行。后续调 ReleaseMutex 就会报 ERROR_NOT_OWNER (288) 失败，
 // 导致互斥量在原物理线程上永久死锁！
 //
-// 因此一旦获取成功，必须立即调用 runtime.LockOSThread() 绑定当前物理线程，
-// 直到 Unlock 释放 Mutex 后再 runtime.UnlockOSThread()。
+// 因此必须在进入 syscall 之前就调用 runtime.LockOSThread() 绑定当前物理线程，
+// 这样 WaitForSingleObject 无论阻塞多久，返回后 Go 调度器绝对保证该 Goroutine
+// 继续在同一个物理线程上运行，直到 Unlock 成功调用 ReleaseMutex 后再 runtime.UnlockOSThread()。
 func (m *isaBusMutex) Lock(timeoutMs uint32) bool {
 	if m == nil || m.handle == 0 {
 		return true
@@ -71,17 +76,24 @@ func (m *isaBusMutex) Lock(timeoutMs uint32) bool {
 	if timeoutMs < 1000 {
 		timeoutMs = 1000
 	}
+
+	// 【核心修正】：必须在调用 WaitForSingleObject 之前就锁定 OS 物理线程！
+	runtime.LockOSThread()
+
 	res, err := windows.WaitForSingleObject(m.handle, timeoutMs)
-	if err != nil {
+	if err != nil || (res != windows.WAIT_OBJECT_0 && res != windows.WAIT_ABANDONED) {
+		// 未能获取锁（超时或失败），必须立即解绑当前物理线程
+		runtime.UnlockOSThread()
+		cnt := m.timeouts.Add(1)
+		if cnt%10 == 1 {
+			log.Printf("[isabus] 获取 ISA 总线锁超时 (handle=0x%X, res=0x%X, err=%v, 连续超时=%d 次)",
+				m.handle, res, err, cnt)
+		}
 		return false
 	}
-	// WAIT_OBJECT_0 表示拿到锁；WAIT_ABANDONED 表示上一个持有者崩溃了，
-	// 此时锁已经归我们所有，可以继续使用。
-	if res == windows.WAIT_OBJECT_0 || res == windows.WAIT_ABANDONED {
-		runtime.LockOSThread()
-		return true
-	}
-	return false
+
+	m.timeouts.Store(0)
+	return true
 }
 
 // Unlock 释放互斥量并解绑 OS 物理线程。
@@ -90,7 +102,10 @@ func (m *isaBusMutex) Unlock() {
 		return
 	}
 	defer runtime.UnlockOSThread()
-	_ = windows.ReleaseMutex(m.handle)
+	if err := windows.ReleaseMutex(m.handle); err != nil {
+		log.Printf("[isabus] ReleaseMutex 失败 (thread=%d, handle=0x%X): %v",
+			windows.GetCurrentThreadId(), m.handle, err)
+	}
 }
 
 // Close 关闭互斥量句柄。
